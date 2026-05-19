@@ -1,0 +1,13 @@
+{
+  "_comment": "Copy this file to ftp_config.json (same folder) and fill in your server details. Only 'url' is required.",
+  "_security_note": "Storing 'password' here saves it as plaintext on disk. For better security, leave password empty and you'll be prompted each run.",
+
+  "url": "ftps://ftp.example.com/public_html/meetings",
+
+  "username": "",
+  "password": "",
+
+  "public_url_template": "https://example.com/meetings/{date}/",
+
+  "trusted_cert_fingerprints": []
+}
