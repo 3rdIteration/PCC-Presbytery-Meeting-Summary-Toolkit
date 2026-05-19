@@ -61,6 +61,28 @@ The `tools/` subfolder of this toolkit contains:
 - Embedded CSS — no external stylesheets.
 - All document links open in new browser tabs (`target="_blank"` with `rel="noopener noreferrer"`).
 
+## Summary Philosophy
+
+This `index.html` is a **navigation aid for the meeting**, not a substitute for the source documents. It exists to help court members avoid missing things they need to vote on, raise, or act on — while still encouraging them to read the actual reports beforehand.
+
+**The summary must strike a balance:**
+
+- **Help** people scan the package and not miss critical items at the meeting.
+- **Don't** be so detailed that members skip the underlying reports.
+
+Concretely, this means:
+
+- **For standing committee reports and the General Presbyter's report** (§3 Pastoral Guidance, §4 Mission Plan / Ministry, §5 General Presbyter, similar): the section should contain **only** (a) a one-line link to the source document and period covered, (b) "Highlights & key issues" callouts, and (c) any motions verbatim. Do **not** reproduce the report's content in bullets, paragraphs, or numbered lists — that's the report's own job. If the meeting only reads the summary, they should know what to pay attention to and what to vote on; if they want detail, they open the report.
+- **Highlights & key issues** are styled callouts that draw the eye:
+  - ⚠ **Concerns** in a warning box (gray): large financial decisions, missing documentation, date or figure inconsistencies, anticipated future agenda items, pastoral matters needing attention, legal / property / grant decisions.
+  - ★ **Things worth celebrating** in a highlight box (teal): significant ministry engagement, successful initiatives, milestones, congregational successes, completed projects, healthy interim ministries. The summary should affirm good news, not just flag problems.
+- **Motions and recommendations** appear verbatim in yellow motion boxes — these need a vote.
+- **For Call business** (§7): include the facts the court must act on (vote counts, terms, proposed ordination date) — these are themselves the "key issues to act on." Do not re-narrate the call's preamble.
+- **For Other Business / informational items** (§8 — memos, position openings, save-the-dates, circulars): a short factual description IS appropriate. These items often *are* the announcement, and there is no other report to read. Keep these to a few bullets per item.
+- **For the Treasurer's Report** (§9): link the financial documents, flag any unusual figures or missing items, but do not re-tabulate every line item.
+
+A reader who only skims `index.html` should leave with three things in mind: **what they must vote on, what concerns they should not miss, and what good news the court should affirm.** Everything else is in the documents.
+
 ---
 
 ## Expected Document Inventory
@@ -236,7 +258,7 @@ Use the following structure:
 
 ### Step 4: Business Committee Report
 
-Parse the Business Committee Report PDF and produce:
+The BCR is the exception to the "no content summaries" rule from the Summary Philosophy — its correspondence tables and recommendations *are* the action items. Parse the BCR PDF and produce:
 
 #### RECEIVE, NOTE AND FILE Table
 | Sender | Document | Status |
@@ -250,16 +272,17 @@ Parse the Business Committee Report PDF and produce:
 - Include clickable links to any referenced PDF/XLSX files.
 
 #### Recommendations and Motions
-- Display each recommendation in a styled motion box.
+- Display each recommendation in a styled motion box, verbatim.
 - Number them sequentially (Recommendation 1, 2, 3, etc.).
 
-#### Treasurer's Report
-- Extract and display account balances from the Balance Sheet / P&L files.
-- Include total assets figure.
+#### Treasurer's section
+- Link the financial documents.
+- Flag any unusual figures or movements as ⚠ key issues; flag healthy positions as ★ highlights.
+- Do **not** re-tabulate every line item from the Balance Sheet / P&L — that's what those files are for.
 
 ### Step 5: IM / Presbytery Representative Reports
 
-Create a table with columns: # | Congregation | Reporter | Document. Link to any IM report PDFs.
+Create a table with columns: # | Congregation | Reporter | Document. Link to any IM report PDFs. **Do not write a paragraph summary of each IM report.** Instead, after the table, add any ★ highlights and ⚠ concerns drawn from the IM reports as inline callouts — examples: search committee progressing to call stage (★), interim minister on leave (⚠), congregation viability concern (⚠), induction date set (★).
 
 ### Step 6: Motions and Recommendations Summary
 
@@ -268,19 +291,32 @@ Create a consolidated table listing all motions and recommendations requiring a 
 - A brief description
 - The source document
 
-### Step 7: Key Issues / Warnings
+### Step 7: Highlights & Key Issues (the heart of every report section)
 
-Identify any items that may require particular attention and insert them as **inline key issue warnings** (⚠) at the relevant section throughout the document. These include:
+Per the Summary Philosophy, each report section's body is made of **inline callouts** — concerns to flag and highlights to celebrate. Place them at the section most relevant to each item, not in a separate end-of-document block.
 
-- **Financial concerns** — unusual balances, large transactions, financial influxes
-- **Property issues** — delays, sales, building concerns
-- **Pastoral matters** — sick leave, stated supply extensions, search committees
-- **Legal matters** — letters to lawyer, suspensions, concerns
-- **Grant decisions** — especially Stated Hour items with financial implications
-- **Organizational initiatives** — viability assessments, continuing education proposals
+**⚠ Key issues (gray warning boxes)** — things the court should not miss or that need attention:
+
+- **Financial concerns** — unusual balances, large transactions, financial influxes.
+- **Property issues** — delays, sales, building concerns.
+- **Pastoral matters** — sick leave, stated supply extensions, search committees, ministers in difficulty.
+- **Legal matters** — letters to lawyer, suspensions, concerns.
+- **Grant decisions** — especially Stated Hour items with financial implications.
+- **Anticipated future agenda items** — when a report flags that a funding request, motion, or appointment is *expected at a future meeting*, raise a ⚠ so the next meeting's planners catch it.
+- **Date / figure inconsistencies** between documents in the package.
 - **Missing Documentation** — apply the rules in **Expected Document Inventory** and **Partial Document Set Handling** (above): raise a ⚠ when a **core** document is absent and at the section that document would normally support. Also raise a ⚠ when a document is referenced by name in another report but no matching file exists in the folder.
 
-Place each key issue warning **inline** at the section where it is most relevant, NOT in a separate summary section at the end.
+**★ Highlights (teal highlight boxes)** — things worth affirming:
+
+- **Significant ministry engagement** — preaching, worship, congregational visits, pastoral care across the presbytery.
+- **Successful initiatives** — completed projects, surveys delivered, books read, online groups running.
+- **Milestones** — successful interim ministries reaching call stage, ordinations, inductions, anniversaries.
+- **Congregational successes** — visioning sessions launched, healthy attendance, financial stability.
+- **Healthy collaborations** — regional GP work, partnerships with other presbyteries, Synod-level engagement.
+
+Use highlights sparingly and only for substantive items — don't manufacture positivity. If a section has nothing to celebrate, it's fine for it to have only concerns (or only motions, or even just a link).
+
+**Be specific.** "Active ministry" is not a highlight; "Led worship at four congregations this period and launched a visioning process at Claude PC" is. The same goes for concerns: "Watch the budget" is weak; "Motion 1 locks $2.09M into Internally Restricted Funds — confirm figures against source records before voting" is useful.
 
 ### Step 8: Supporting Documents Table
 
@@ -293,9 +329,10 @@ Extract next meeting dates, times, and locations from the docket or Business Com
 ### Step 10: Styling Requirements
 
 Use the following CSS conventions:
-- Motion boxes: yellow background with yellow left border
-- Key issue warnings: light gray background with border
-- Stated Hour items: green background with green left border
+- Motion boxes: yellow background with yellow left border, prefix "Motion N —"
+- Key issue warnings: light gray background with gray left border, prefix `⚠`
+- Highlight (worth celebrating) callouts: light teal background with teal left border, prefix `★`. Distinct from Stated Hour green to avoid visual ambiguity.
+- Stated Hour items: green background with green left border (reserved exclusively for docket-level Stated Hour topics — not for highlights)
 - Tables: dark header background, alternating row colors, hover highlight
 - Links: blue, no underline by default, underline on hover
 - Use a clean, professional sans-serif font stack
