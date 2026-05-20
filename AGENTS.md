@@ -381,6 +381,7 @@ Include a `<script>` block before `</body>` that:
 1. Sets `target="_blank"` and `rel="noopener noreferrer"` on all document links.
 2. Rewrites Word/Excel "View" links to a native web viewer URL (no conversion), while keeping separate direct local-file download links.
 3. Leaves links as direct file links when the page is not being served over `http(s)` (for local offline preview scenarios).
+4. Treats Word/Excel "View" links as external service usage: Office web viewer fetches the file over HTTPS, so only use View links for files intended for web publication.
 
 Use this exact script:
 
@@ -393,7 +394,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     var officeViewLinks = document.querySelectorAll('a[data-office-file]');
-    var isWebContext = /^https?:$/i.test(window.location.protocol);
+    var isWebContext = /^(http|https):$/.test(window.location.protocol);
     officeViewLinks.forEach(function(link) {
         var file = link.getAttribute('data-office-file');
         if (!file) return;
