@@ -2,8 +2,17 @@
 upload_to_ftp.py
 ================
 
-Upload the generated meeting summary `index.html` to an FTP(S) server,
-placing it inside a date-named subfolder (e.g. `meetings/2026-05-19/index.html`).
+Upload the generated meeting summary `index.html` AND every local document it
+references to an FTP(S) server, placing them inside a date-named subfolder
+(e.g. `meetings/2026-05-19/{index.html, *.pdf, *.xlsx, ...}`).
+
+After uploading `index.html` the script scans it for `<a href="...">` links to
+local files in the same folder and uploads each one alongside, so the links
+resolve on the server. Subdirectories are not followed; external URLs
+(http://, mailto:, etc.) are ignored. Credential files are hard-refused;
+toolkit files (AGENTS.md, CLAUDE.md, README.md, tools/) prompt for
+confirmation unless --yes was passed. Pass --only-html to upload just the
+HTML and skip the referenced documents.
 
 Designed for a non-technical user: reads its server URL (and optionally
 username/password) from `ftp_config.json` and prompts interactively for
@@ -64,6 +73,7 @@ import datetime
 import ftplib
 import getpass
 import hashlib
+import html as html_lib
 import json
 import re
 import socket
@@ -137,6 +147,56 @@ def detect_meeting_date(folder: Path) -> str | None:
     """Look for a YYYY-MM-DD pattern in the folder name."""
     m = re.search(r"\d{4}-\d{2}-\d{2}", folder.name)
     return m.group(0) if m else None
+
+
+# Schemes we ignore when scanning hrefs for local files.
+_EXTERNAL_HREF_RE = re.compile(r"^(?:https?|mailto|ftp|ftps|data|javascript|tel|file):", re.IGNORECASE)
+
+
+def extract_referenced_files(html_path: Path) -> list[Path]:
+    """Scan index.html for <a href="..."> references to local files in the same folder.
+
+    Returns deduplicated, alphabetically sorted absolute paths. Filters out:
+      - external schemes (http, mailto, etc.) and bare fragment anchors (#x);
+      - paths that escape the html file's folder (../, absolute paths);
+      - the html file itself;
+      - anything not a real file.
+    Subdirectories are deliberately not supported — the toolkit's meeting folder
+    is expected to be flat.
+    """
+    folder = html_path.parent.resolve()
+    try:
+        text = html_path.read_text(encoding="utf-8")
+    except OSError:
+        return []
+    hrefs = re.findall(r'href\s*=\s*"([^"]+)"', text)
+    seen: dict[str, Path] = {}
+    for raw in hrefs:
+        href = html_lib.unescape(raw).strip()
+        if not href or href.startswith("#"):
+            continue
+        if _EXTERNAL_HREF_RE.match(href):
+            continue
+        # Strip query/fragment, then URL-decode (e.g. %20 → space).
+        href = unquote(href.split("?", 1)[0].split("#", 1)[0])
+        if not href:
+            continue
+        try:
+            candidate = (folder / href).resolve()
+        except (OSError, ValueError):
+            continue
+        # Must be a real file sitting directly in the html's folder.
+        if candidate.parent != folder:
+            continue
+        if not candidate.is_file():
+            continue
+        try:
+            if candidate.samefile(html_path):
+                continue
+        except OSError:
+            continue
+        seen[str(candidate)] = candidate
+    return sorted(seen.values(), key=lambda p: p.name.lower())
 
 
 def parse_target_url(url: str) -> tuple[str, str, int, str, str | None, str | None]:
@@ -420,6 +480,54 @@ def do_upload(args: argparse.Namespace) -> int:
             _err(f"Upload denied by server: {e}")
             return 6
         _info(f"  ✓ Upload complete.")
+
+        # Also upload every local file the HTML references, so links resolve on the server.
+        # Subject to the same hard-refusal (credentials) and warn-and-confirm (toolkit) filters.
+        if not args.only_html and file_path.suffix.lower() in (".html", ".htm"):
+            referenced = extract_referenced_files(file_path)
+            _info("")
+            if not referenced:
+                _info("No local files are referenced by index.html — nothing else to upload.")
+            else:
+                _info(f"Found {len(referenced)} referenced document(s) to upload:")
+                uploaded: list[str] = []
+                skipped_sensitive: list[str] = []
+                skipped_toolkit: list[str] = []
+                failed: list[tuple[str, str]] = []
+                for ref in referenced:
+                    name_ci = ref.name.lower()
+                    if ref.name in SENSITIVE_BASENAMES or name_ci.startswith("ftp_config"):
+                        _warn(f"  Refusing to upload sensitive file: {ref.name}")
+                        skipped_sensitive.append(ref.name)
+                        continue
+                    if name_ci in TOOLKIT_BASENAMES_CI or any(
+                        part.lower() in TOOLKIT_PARENT_DIRS for part in ref.parts[:-1]
+                    ):
+                        if not args.yes and not _confirm(
+                            f"  {ref.name} looks like a toolkit file — upload it anyway?", default=False
+                        ):
+                            skipped_toolkit.append(ref.name)
+                            continue
+                    sz = ref.stat().st_size
+                    _info(f"  Uploading {ref.name} ({sz:,} bytes)...")
+                    try:
+                        with open(ref, "rb") as fh:
+                            ftp.storbinary(f"STOR {ref.name}", fh)
+                        uploaded.append(ref.name)
+                    except ftplib.error_perm as e:
+                        _err(f"    Upload denied: {e}")
+                        failed.append((ref.name, str(e)))
+                    except (OSError, ftplib.all_errors) as e:  # type: ignore[arg-type]
+                        _err(f"    Upload failed: {e}")
+                        failed.append((ref.name, str(e)))
+                _info("")
+                _info(
+                    f"  ✓ Uploaded {len(uploaded)} of {len(referenced)} referenced file(s)."
+                    + (f" Skipped {len(skipped_sensitive)} sensitive." if skipped_sensitive else "")
+                    + (f" Skipped {len(skipped_toolkit)} toolkit." if skipped_toolkit else "")
+                    + (f" {len(failed)} failed." if failed else "")
+                )
+
         tmpl = cfg.get("public_url_template")
         if tmpl:
             _info(f"\nPublic URL: {tmpl.format(date=date)}")
@@ -435,6 +543,15 @@ def do_upload(args: argparse.Namespace) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    # Force UTF-8 on stdout/stderr so the script's status glyphs (✓, ⚠) don't
+    # crash on Windows' default cp1252 console. Best-effort: silently skipped
+    # if the stream doesn't support reconfigure (e.g. when output is captured).
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8")
+        except (AttributeError, OSError):
+            pass
+
     parser = argparse.ArgumentParser(
         description="Upload index.html to an FTP(S) server inside a dated subfolder.",
     )
@@ -452,6 +569,11 @@ def main(argv: list[str] | None = None) -> int:
         "--insecure-allow-plain",
         action="store_true",
         help="If TLS is unavailable on an ftp:// server, skip the confirmation prompt and use plain FTP.",
+    )
+    parser.add_argument(
+        "--only-html",
+        action="store_true",
+        help="Upload only the HTML file; do not also upload the documents it references.",
     )
     args = parser.parse_args(argv)
     try:

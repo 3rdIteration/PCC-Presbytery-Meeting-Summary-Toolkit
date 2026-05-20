@@ -52,7 +52,7 @@ For each of these:
 The `tools/` subfolder of this toolkit contains:
 
 - `tools/make_searchable_pdf.py` — embed an invisible searchable text layer onto a scanned PDF after you have OCR'd it via vision. Run `python <toolkit>/tools/make_searchable_pdf.py --help` for full usage. Input and output paths are passed explicitly, so this script does not care where it is invoked from.
-- `tools/upload_to_ftp.py` — upload the generated `index.html` to an FTP(S) server inside a date-named folder. Reads `<toolkit>/tools/ftp_config.json` (template at `<toolkit>/tools/ftp_config.example.json`). Pass `--folder <meeting>` so it knows where `index.html` lives and can infer the date. Prefers TLS; warns on unverified certs and cleartext.
+- `tools/upload_to_ftp.py` — upload the generated `index.html` **and every local document it references** to an FTP(S) server inside a date-named folder, so links resolve on the live page. Reads `<toolkit>/tools/ftp_config.json` (template at `<toolkit>/tools/ftp_config.example.json`). Pass `--folder <meeting>` so it knows where `index.html` lives and can infer the date. After sending `index.html` the script parses it for `<a href="...">` references to local files in the same folder and uploads each one (skipping external URLs, subdirectories, the credential file, and — with a confirmation — toolkit files). Pass `--only-html` to upload just the HTML and skip the referenced documents. Prefers TLS; warns on unverified certs and cleartext.
 - `tools/requirements.txt` — Python dependencies (`pypdf`, `reportlab`). Install with `pip install -r <toolkit>/tools/requirements.txt` if missing. The upload script uses only the Python stdlib (no extra installs).
 
 ## Output Format
@@ -229,6 +229,31 @@ All subsequent extraction in the meeting folder can rely on (a) embedded text in
 >
 > Whichever date you use, render the resolution path in §1 (Header) so a reader can see where it came from. If the date you chose disagrees with another plausible candidate (e.g. you used a report date but the folder name differs), flag the disagreement inline as a key issue.
 
+### Step 1.5: Triage Documents That May Not Belong in the Public Summary
+
+A meeting folder sometimes contains documents that are physically present but **should not be surfaced** in the published `index.html` — they may be confidential, intended only for the Business Committee, or simply unrelated material dropped in by accident. Before generating any HTML, scan the inventory you built in Step 1 and **stop to ask the user** about any document that matches one of the categories below.
+
+**Flag — and ask before including:**
+
+- **"For Business Committee only" variants.** Filenames or first-page headings containing "for Business Committee only", "BC only", "Business Committee — confidential", "internal", or "not for distribution". Watch especially for **paired reports** where one variant is labelled "to Presbytery" / "for the Presbytery" (short, public-facing) and another is labelled "for Business Committee only" (long, internal). The long version is BC-internal; only the short version is read at the meeting.
+- **"Core Issues" / complaint / grievance / personal-note attachments.** Documents that enumerate concerns about a named individual, internal Session deliberations, personal correspondence, or material that reads like background for a specific officer (e.g. the Deputy Clerk) rather than the whole court.
+- **Items referred to a single officer in the BCR REFER table.** When the Business Committee Report refers an item to a single named person (Deputy Clerk, Clerk, Lawyer, etc.) rather than to a committee, treat the underlying document as likely-confidential and ask.
+- **Apparent placement errors.** Documents from another presbytery, another year, an unrelated topic, or that aren't referenced by any other document in the folder. Ask whether they belong here at all.
+- **Anything whose absence would *not* prevent a court member from following the meeting**, and whose publication could embarrass a person or breach a confidence — when in doubt, flag and ask.
+
+**How to ask.** For each flagged document, present a short prompt to the user that:
+
+1. Names the file.
+2. Gives your reason for flagging it (one line — e.g. *"appears to be the long BC-only counterpart to the short 'to Presbytery' report"*, *"refers to a named individual and was referred to the Deputy Clerk in the BCR"*, *"from Presbytery of X, doesn't match this meeting"*).
+3. Offers a clear choice:
+   - **Include and summarize** — treat as a normal meeting document (link, hash, list in Supporting Documents, surface key content).
+   - **Omit entirely** — leave the file on disk for the record, but do **not** link it, summarize its content, hash it, or list it in the Supporting Documents table. Do not mention by name or describe what was omitted; treat it as if it were never in the folder for the purposes of this summary.
+   - (Optional third) **Remove from folder** — only if the user confirms the file truly doesn't belong here.
+
+**Wait for the user's answer before generating HTML.** Default to *omission* if the user is unreachable: it is safer to leave something out than to publish it by mistake. A document that is later determined to be safe can always be added in a follow-up regeneration; a document that was published in error cannot easily be unpublished.
+
+**Why this matters for upload.** The FTP uploader (Step 16) uploads `index.html` plus every local file the HTML references. A document that is omitted from `index.html` is automatically also omitted from the upload — that is the intended mechanism for keeping a file local-only. The agent does not need a separate exclusion list; getting the HTML right is sufficient.
+
 ### Step 2: Structure the HTML Document
 
 Use the following structure:
@@ -393,7 +418,9 @@ Publishing is **never automatic**. The user may want to process the meeting loca
    - It prefers FTPS. If the server's certificate fails verification, it shows the certificate details and asks the user to confirm trust; trusted fingerprints get pinned in the config so the user is not re-prompted next month.
    - If the server does not speak TLS at all, it warns and asks the user to confirm a plain-FTP fallback.
    - **The script asks "Proceed with upload?" once it has connected, logged in, and resolved the remote path.** This is a second, deliberate confirmation right before any bytes are sent. Let the user answer it themselves — do not pass `--yes` unless the user has already explicitly approved the upload to that specific URL in the current conversation.
-4. On success the script prints the public URL (if `public_url_template` is set in the config). Share that URL with the user.
+   - **After uploading `index.html` the script also uploads every local document the HTML references** (PDFs, XLSX, images, OCR sidecars, etc.) so links resolve when someone visits the live page. Files outside the meeting folder, files in subdirectories, external URLs (`http://`, `mailto:`, etc.), the credential config, and (without confirmation) toolkit files are excluded. If a document is in the folder but deliberately *not* linked from the HTML — e.g. confidential supporting material referred to the Deputy Clerk — it will **not** be uploaded; that's the intended way to keep something local-only.
+   - Pass `--only-html` if the user wants to push a minor HTML edit without re-uploading every PDF.
+4. On success the script prints how many referenced files were uploaded (and any skipped or failed), then the public URL (if `public_url_template` is set in the config). Share that URL with the user.
 
 If the upload step fails for permission, network, or credential reasons, surface the script's error message to the user verbatim — do not retry blindly.
 
