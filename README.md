@@ -118,7 +118,7 @@ The generated summary now treats Word/Excel documents differently from PDFs:
 - **View** uses a native Office web viewer URL (no conversion of your local files).
 - **Download** always points to the original file in the meeting folder.
 
-Note: the web viewer needs the meeting page/files to be reachable over HTTP(S) (e.g., after FTP upload). When opening `index.html` directly from local disk, those links may fall back to direct-file behavior depending on browser settings.
+Note: the web viewer needs the meeting page/files to be reachable over HTTP(S) (e.g., after FTP upload). When opening `index.html` directly from local disk, those links fall back to direct-file behavior.
 
 ---
 
