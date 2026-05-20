@@ -26,6 +26,7 @@ When invoking the helper scripts in `tools/`, use paths relative to the toolkit 
 
 - **Input:** a meeting folder (path given by the user) containing the meeting's PDFs, Word documents, and Excel spreadsheets.
 - **Output:** a single `index.html` file written into the meeting folder.
+- **Word/Excel link behavior:** for every `.doc`/`.docx`/`.xls`/`.xlsx`/`.xlsm` reference in the summary, render both **View** and **Download** links; the document title/file-name link should default to **View**.
 
 ## When the toolkit is colocated with meeting documents
 
@@ -60,6 +61,7 @@ The `tools/` subfolder of this toolkit contains:
 - Single self-contained HTML file named `index.html`.
 - Embedded CSS — no external stylesheets.
 - All document links open in new browser tabs (`target="_blank"` with `rel="noopener noreferrer"`).
+- For Word/Excel documents, include a native web-view link (no file conversion) plus a direct download link.
 
 ## Summary Philosophy
 
@@ -273,7 +275,7 @@ Use the following structure:
 9. Next Meetings (dates, times, locations, documentation deadline)
 10. Supporting Documents (complete reference table of all files and where they are matched)
 11. Attribution footer
-12. JavaScript to set target="_blank" on all .pdf and .xlsx links
+12. JavaScript to set target="_blank" on document links and wire Word/Excel View+Download behavior
 ```
 
 ### Step 3: Docket Section
@@ -296,12 +298,14 @@ The BCR is the exception to the "no content summaries" rule from the Summary Phi
 | Sender | Document | Status |
 |--------|----------|--------|
 - Include clickable links to any circulated document files.
+- For Word/Excel files, each reference must expose **View** and **Download** actions; the main clickable document title should point to **View**.
 
 #### REFER Table
 | Sender | Document / Matter | Referred To |
 |--------|-------------------|-------------|
 - List each item of correspondence and where it is being referred (Business Committee, Pastoral Guidance Committee, Lawyer, etc.).
 - Include clickable links to any referenced PDF/XLSX files.
+- For Word/Excel files, each reference must expose **View** and **Download** actions; the main clickable document title should point to **View**.
 
 #### Recommendations and Motions
 - Display each recommendation in a styled motion box, verbatim.
@@ -353,6 +357,7 @@ Use highlights sparingly and only for substantive items — don't manufacture po
 ### Step 8: Supporting Documents Table
 
 At the bottom of the document, include a complete reference table listing **every file** in the meeting folder and which docket item or report it is matched to. If any files cannot be matched to a specific docket item, note them as standalone supporting documents.
+- For Word/Excel rows in this table, include both **View** and **Download** links (with the title/file-name link defaulting to **View**).
 
 ### Step 9: Next Meetings
 
@@ -371,16 +376,48 @@ Use the following CSS conventions:
 
 ### Step 11: JavaScript for Link Behavior
 
-Include a `<script>` block before `</body>` that sets `target="_blank"` and `rel="noopener noreferrer"` on all links pointing to `.pdf` and `.xlsx` files:
+Include a `<script>` block before `</body>` that:
+
+1. Sets `target="_blank"` and `rel="noopener noreferrer"` on all document links.
+2. Rewrites Word/Excel "View" links to a native web viewer URL (no conversion), while keeping separate direct local-file download links.
+3. Leaves links as direct file links when the page is not being served over `http(s)` (for local offline preview scenarios).
+
+Use this exact script:
 
 ```javascript
 document.addEventListener('DOMContentLoaded', function() {
-    var links = document.querySelectorAll('a[href$=".pdf"], a[href$=".xlsx"]');
-    links.forEach(function(link) {
+    var docLinks = document.querySelectorAll('a[href$=".pdf"], a[href$=".xlsx"], a[href$=".xls"], a[href$=".xlsm"], a[href$=".doc"], a[href$=".docx"]');
+    docLinks.forEach(function(link) {
         link.setAttribute('target', '_blank');
         link.setAttribute('rel', 'noopener noreferrer');
     });
+
+    var officeViewLinks = document.querySelectorAll('a[data-office-file]');
+    var isWebContext = /^https?:$/i.test(window.location.protocol);
+    officeViewLinks.forEach(function(link) {
+        var file = link.getAttribute('data-office-file');
+        if (!file) return;
+
+        if (isWebContext) {
+            var absoluteUrl = new URL(file, window.location.href).href;
+            var officeViewerUrl = 'https://view.officeapps.live.com/op/view.aspx?src=' + encodeURIComponent(absoluteUrl);
+            link.setAttribute('href', officeViewerUrl);
+        } else {
+            // Local file preview: keep direct file URL as fallback.
+            link.setAttribute('href', file);
+        }
+    });
 });
+```
+
+When rendering Word/Excel links in the HTML body, use this structure (file name shown as example):
+
+```html
+<a data-office-file="Assessments May 2026.xlsx" href="Assessments May 2026.xlsx">Assessments May 2026.xlsx</a>
+<span class="doc-actions">(
+  <a data-office-file="Assessments May 2026.xlsx" href="Assessments May 2026.xlsx">View</a> |
+  <a href="Assessments May 2026.xlsx" download>Download</a>
+)</span>
 ```
 
 ### Step 12: AI-Generated Disclaimer
@@ -442,10 +479,11 @@ If the upload step fails for permission, network, or credential reasons, surface
 5. **All document links** must open in new tabs.
 6. **Key issues** are placed inline at relevant sections, not in a separate end-of-document section.
 7. **Supporting Documents table** at the bottom lists all files and their docket/report matches.
-8. The output is a **single self-contained HTML file** — no external dependencies.
+8. The output is a **single self-contained HTML file**; external viewer URLs are allowed only for Word/Excel **View** links (no file conversion).
 9. **AI-Generated Disclaimer** must appear prominently after the header information block, warning that the summary may contain mistakes, omissions, and incorrect characterizations, and does not replace the official documents.
 10. **Scanned PDFs are OCR'd in place** (or alongside) as the very first step so all later parsing is text-based.
 11. Include a visible top-of-page **Back** link that points to `../` (relative parent directory).
+12. Word/Excel document references must provide both **View** and **Download** links, with document-title links defaulting to **View**.
 
 ---
 

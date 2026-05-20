@@ -20,6 +20,7 @@ Every month:
    - Make any scanned PDFs in the meeting folder searchable (so Ctrl+F works later).
    - Read every document and figure out the actual meeting date (docket → committee report dates → folder name → ask you if ambiguous).
    - Generate `index.html` **inside the meeting folder** — a self-contained browser-viewable summary with motions, key issues, supporting document links, financial snapshots, and a hash list.
+   - For Word/Excel links in the summary, provide both **View** and **Download** actions (with the title link defaulting to **View**, using an in-browser Office web viewer and no file conversion).
    - **Ask whether you want to upload to the web.** If you only want a local file, say no.
 5. If you said yes to uploading, the script confirms the target one more time ("Proceed with upload?") before sending anything. The public URL is printed when done.
 
@@ -105,6 +106,19 @@ Some meeting PDFs (extracts of minutes, signed forms) arrive as scanned images w
 3. It runs `tools/make_searchable_pdf.py` to overlay that text as an **invisible** layer on the original scan, writing the searchable copy back into the meeting folder. Visually identical; searchable and machine-readable.
 
 There's no Tesseract on your machine, so the invisible text isn't positioned word-for-word over the scan. Search and copy work; visual selection highlights won't line up perfectly with the scanned image. Good enough for what we need.
+
+---
+
+## Word/Excel in-browser viewing
+
+The generated summary now treats Word/Excel documents differently from PDFs:
+
+- Each Word/Excel reference includes **View** and **Download** links.
+- The file title itself defaults to **View**.
+- **View** uses a native Office web viewer URL (no conversion of your local files).
+- **Download** always points to the original file in the meeting folder.
+
+Note: the web viewer needs the meeting page/files to be reachable over HTTP(S) (e.g., after FTP upload). When opening `index.html` directly from local disk, those links may fall back to direct-file behavior depending on browser settings.
 
 ---
 
