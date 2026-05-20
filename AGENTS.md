@@ -260,19 +260,20 @@ Use the following structure:
 
 ```
 1. Header (Title, Date, Location, Moderator, Clerk, Worship, Stated Hour info)
-2. Docket Section (items listed in order, with Docket.pdf linked at item 2)
-3. Reports Section
+2. Top navigation link near the top: **"← Back to meeting documents index"** linking to `../` (relative path only; no hardcoded domain)
+3. Docket Section (items listed in order, with Docket.pdf linked at item 2)
+4. Reports Section
    a. Business Committee Report (with RECEIVE and REFER tables, recommendations)
    b. Pastoral Guidance Report (note if no document circulated)
    c. General Presbyter's Report
-4. IM / Presbytery Representative Reports (table with congregation, reporter, document link)
-5. Motions and Recommendations for Vote (summary table)
-6. Other Business
-7. Adjournment
-8. Next Meetings (dates, times, locations, documentation deadline)
-9. Supporting Documents (complete reference table of all files and where they are matched)
-10. Attribution footer
-11. JavaScript to set target="_blank" on all .pdf and .xlsx links
+5. IM / Presbytery Representative Reports (table with congregation, reporter, document link)
+6. Motions and Recommendations for Vote (summary table)
+7. Other Business
+8. Adjournment
+9. Next Meetings (dates, times, locations, documentation deadline)
+10. Supporting Documents (complete reference table of all files and where they are matched)
+11. Attribution footer
+12. JavaScript to set target="_blank" on all .pdf and .xlsx links
 ```
 
 ### Step 3: Docket Section
@@ -280,6 +281,12 @@ Use the following structure:
 - List each docket item as an `<h3>` heading (numbered).
 - **Link the Docket PDF inline at item 2** (where the docket is formally adopted), not above the docket list.
 - For the Stated Hour docket item, include the **scheduled time** displayed prominently.
+
+### Step 3.5: Top "Back" Link
+
+- Add a visible navigation link near the top of the page (above or immediately below the header block).
+- Link target must be `../` so the page navigates up one folder level (e.g. from `/2026-05-26/` to `/` of the meeting docs site path).
+- Use a relative URL only — never hardcode protocol, domain, or host-specific absolute URLs.
 
 ### Step 4: Business Committee Report
 
@@ -438,6 +445,7 @@ If the upload step fails for permission, network, or credential reasons, surface
 8. The output is a **single self-contained HTML file** — no external dependencies.
 9. **AI-Generated Disclaimer** must appear prominently after the header information block, warning that the summary may contain mistakes, omissions, and incorrect characterizations, and does not replace the official documents.
 10. **Scanned PDFs are OCR'd in place** (or alongside) as the very first step so all later parsing is text-based.
+11. Include a visible top-of-page **Back** link that points to `../` (relative parent directory).
 
 ---
 
