@@ -26,6 +26,7 @@ When invoking the helper scripts in `tools/`, use paths relative to the toolkit 
 
 - **Input:** a meeting folder (path given by the user) containing the meeting's PDFs, Word documents, and Excel spreadsheets.
 - **Output:** a single `index.html` file written into the meeting folder.
+- **Word/Excel link behavior:** for every `.doc`/`.docx`/`.xls`/`.xlsx`/`.xlsm` reference in the summary, render both **View** and **Download** links; the document title/file-name link should default to **View**.
 
 ## When the toolkit is colocated with meeting documents
 
@@ -60,6 +61,7 @@ The `tools/` subfolder of this toolkit contains:
 - Single self-contained HTML file named `index.html`.
 - Embedded CSS — no external stylesheets.
 - All document links open in new browser tabs (`target="_blank"` with `rel="noopener noreferrer"`).
+- For Word/Excel documents, include an in-page client-side viewer link (no file conversion, no external service) plus a direct download link.
 
 ## Summary Philosophy
 
@@ -273,7 +275,7 @@ Use the following structure:
 9. Next Meetings (dates, times, locations, documentation deadline)
 10. Supporting Documents (complete reference table of all files and where they are matched)
 11. Attribution footer
-12. JavaScript to set target="_blank" on all .pdf and .xlsx links
+12. JavaScript to set target="_blank" on document links and wire Word/Excel View+Download behavior
 ```
 
 ### Step 3: Docket Section
@@ -296,12 +298,14 @@ The BCR is the exception to the "no content summaries" rule from the Summary Phi
 | Sender | Document | Status |
 |--------|----------|--------|
 - Include clickable links to any circulated document files.
+- For Word/Excel files, each reference must expose **View** and **Download** actions; the main clickable document title should point to **View**.
 
 #### REFER Table
 | Sender | Document / Matter | Referred To |
 |--------|-------------------|-------------|
 - List each item of correspondence and where it is being referred (Business Committee, Pastoral Guidance Committee, Lawyer, etc.).
 - Include clickable links to any referenced PDF/XLSX files.
+- For Word/Excel files, each reference must expose **View** and **Download** actions; the main clickable document title should point to **View**.
 
 #### Recommendations and Motions
 - Display each recommendation in a styled motion box, verbatim.
@@ -353,6 +357,7 @@ Use highlights sparingly and only for substantive items — don't manufacture po
 ### Step 8: Supporting Documents Table
 
 At the bottom of the document, include a complete reference table listing **every file** in the meeting folder and which docket item or report it is matched to. If any files cannot be matched to a specific docket item, note them as standalone supporting documents.
+- For Word/Excel rows in this table, include both **View** and **Download** links (with the title/file-name link defaulting to **View**).
 
 ### Step 9: Next Meetings
 
@@ -371,17 +376,144 @@ Use the following CSS conventions:
 
 ### Step 11: JavaScript for Link Behavior
 
-Include a `<script>` block before `</body>` that sets `target="_blank"` and `rel="noopener noreferrer"` on all links pointing to `.pdf` and `.xlsx` files:
+Word/Excel files are rendered in an **in-page modal** using client-side JavaScript libraries loaded from a CDN. This approach works with password-protected folders because `fetch()` is same-origin and inherits the browser's session cookies/HTTP Basic Auth credentials — unlike an external Office web viewer which fetches from a third-party server with no credentials.
+
+The generated HTML must include the following pieces (in order):
+
+#### 11a. CDN library `<script>` tags in `<head>`
+
+```html
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js" crossorigin="anonymous"></script>
+```
+
+#### 11b. Modal CSS (add inside the main `<style>` block)
+
+```css
+#doc-viewer-modal {
+    display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.6); z-index: 9999; overflow: auto;
+}
+#doc-viewer-modal.open { display: flex; align-items: flex-start; justify-content: center; padding: 40px 20px; }
+#doc-viewer-box {
+    background: #fff; border-radius: 6px; width: 100%; max-width: 960px;
+    padding: 24px; box-shadow: 0 8px 40px rgba(0,0,0,0.4); position: relative;
+}
+#doc-viewer-close {
+    position: absolute; top: 12px; right: 16px; font-size: 1.4em; cursor: pointer;
+    background: none; border: none; color: #333; line-height: 1;
+}
+#doc-viewer-title { font-weight: bold; margin-bottom: 16px; font-size: 1.1em; }
+#doc-viewer-content { overflow-x: auto; }
+#doc-viewer-content table { border-collapse: collapse; width: 100%; font-size: 0.85em; }
+#doc-viewer-content td, #doc-viewer-content th { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+#doc-viewer-content th { background: #f0f0f0; font-weight: bold; }
+```
+
+#### 11c. Modal HTML (place immediately before `</body>`)
+
+```html
+<div id="doc-viewer-modal">
+  <div id="doc-viewer-box">
+    <button id="doc-viewer-close" title="Close">✕</button>
+    <div id="doc-viewer-title"></div>
+    <div id="doc-viewer-content"></div>
+  </div>
+</div>
+```
+
+#### 11d. Behavior script (place in a `<script>` block immediately before `</body>`, after the modal HTML)
 
 ```javascript
 document.addEventListener('DOMContentLoaded', function() {
-    var links = document.querySelectorAll('a[href$=".pdf"], a[href$=".xlsx"]');
-    links.forEach(function(link) {
+    // PDF links open in a new tab (browser handles auth natively).
+    document.querySelectorAll('a[href$=".pdf"]').forEach(function(link) {
         link.setAttribute('target', '_blank');
         link.setAttribute('rel', 'noopener noreferrer');
     });
+
+    // Modal open/close helpers.
+    var modal = document.getElementById('doc-viewer-modal');
+    var modalTitle = document.getElementById('doc-viewer-title');
+    var modalContent = document.getElementById('doc-viewer-content');
+
+    function openModal(title, html) {
+        modalTitle.textContent = title;
+        modalContent.innerHTML = html;
+        modal.classList.add('open');
+    }
+    function closeModal() {
+        modal.classList.remove('open');
+        modalContent.innerHTML = '';
+    }
+
+    var closeBtn = document.getElementById('doc-viewer-close');
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+    if (modal) modal.addEventListener('click', function(e) { if (e.target === modal) closeModal(); });
+    document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeModal(); });
+
+    // Intercept View clicks on Word/Excel files and render in-page.
+    // fetch() is same-origin, so browser credentials (session cookies / HTTP Basic Auth) are sent automatically.
+    document.querySelectorAll('a[data-office-file]').forEach(function(link) {
+        var file = link.getAttribute('data-office-file');
+        if (!file) return;
+        var ext = file.split('.').pop().toLowerCase();
+        // Legacy .doc (binary) cannot be parsed client-side; leave as a plain download link.
+        if (ext === 'doc') return;
+
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            openModal(file, '<p><em>Loading\u2026</em></p>');
+
+            fetch(file, { credentials: 'same-origin' })
+                .then(function(r) {
+                    if (!r.ok) throw new Error('HTTP ' + r.status);
+                    return r.arrayBuffer();
+                })
+                .then(function(buf) {
+                    if (ext === 'xlsx' || ext === 'xls' || ext === 'xlsm') {
+                        var wb = XLSX.read(buf, { type: 'array' });
+                        var html = '';
+                        wb.SheetNames.forEach(function(name) {
+                            html += '<h3 style="margin:12px 0 4px">' + name + '</h3>';
+                            html += XLSX.utils.sheet_to_html(wb.Sheets[name]);
+                        });
+                        openModal(file, html);
+                    } else if (ext === 'docx') {
+                        mammoth.convertToHtml({ arrayBuffer: buf })
+                            .then(function(result) {
+                                openModal(file, result.value || '<p><em>Empty document.</em></p>');
+                            })
+                            .catch(function(err) {
+                                openModal(file, '<p>Could not render: ' + err.message + '</p>');
+                            });
+                    }
+                })
+                .catch(function(err) {
+                    openModal(file, '<p>Could not load file: ' + err.message
+                        + '. <a href="' + file + '" download>Download instead</a></p>');
+                });
+        });
+    });
 });
 ```
+
+When rendering Word/Excel links in the HTML body, use this structure (file name shown as example):
+
+```html
+<a data-office-file="Assessments May 2026.xlsx" href="Assessments May 2026.xlsx">Assessments May 2026.xlsx</a>
+<span class="doc-actions">(
+  <a data-office-file="Assessments May 2026.xlsx" href="Assessments May 2026.xlsx">View</a> |
+  <a href="Assessments May 2026.xlsx" download>Download</a>
+)</span>
+```
+
+**Notes:**
+- `.docx` files are rendered as HTML via mammoth.js (formatting may be simplified).
+- `.xlsx`/`.xls`/`.xlsm` files are rendered as HTML tables via SheetJS, one sheet per heading.
+- `.doc` (legacy binary Word) cannot be parsed client-side; its View link falls back to a direct file download.
+- The CDN scripts are loaded from jsDelivr. If the user's device has no internet access, the modal viewer will not function, but Download links always work regardless.
+- `.pdf` files open natively in the browser and work with password-protected hosting without any special handling.
 
 ### Step 12: AI-Generated Disclaimer
 
@@ -389,6 +521,7 @@ Include a prominent disclaimer immediately after the header information block st
 - This summary was generated by artificial intelligence and may contain mistakes, omissions, and characterizations that are not correct or appropriate.
 - It does not take the place of the official documents, which are assumed to have been fully read.
 - It is simply a tool for navigating meeting resources during the meeting.
+- Word/Excel "View" links use client-side JavaScript libraries (SheetJS for spreadsheets, mammoth.js for Word) to render documents in an in-page modal. This works with password-protected hosting. Legacy `.doc` files fall back to a direct download since they cannot be rendered client-side.
 
 ### Step 13: Version Number and Changelog
 
@@ -442,10 +575,11 @@ If the upload step fails for permission, network, or credential reasons, surface
 5. **All document links** must open in new tabs.
 6. **Key issues** are placed inline at relevant sections, not in a separate end-of-document section.
 7. **Supporting Documents table** at the bottom lists all files and their docket/report matches.
-8. The output is a **single self-contained HTML file** — no external dependencies.
+8. The output is a **single self-contained HTML file**; Word/Excel **View** links use client-side JS libraries (SheetJS / mammoth.js) loaded from CDN — no external viewer service, no file conversion, works with password-protected hosting.
 9. **AI-Generated Disclaimer** must appear prominently after the header information block, warning that the summary may contain mistakes, omissions, and incorrect characterizations, and does not replace the official documents.
 10. **Scanned PDFs are OCR'd in place** (or alongside) as the very first step so all later parsing is text-based.
 11. Include a visible top-of-page **Back** link that points to `../` (relative parent directory).
+12. Word/Excel document references must provide both **View** and **Download** links, with document-title links defaulting to **View**.
 
 ---
 
