@@ -237,6 +237,8 @@ def check_document_health(path_like: str | Path) -> Tuple[HealthStatus, str]:
     path = Path(path_like)
     if not path.exists():
         return "unreadable", f"File not found: {path}"
+    if not path.is_file():
+        return "unreadable", f"Not a file: {path}"
     if path.stat().st_size == 0:
         return "damaged", "File is empty (0 bytes)."
     ext = path.suffix.lower()
