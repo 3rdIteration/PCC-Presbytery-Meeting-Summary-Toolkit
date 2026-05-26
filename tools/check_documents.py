@@ -230,9 +230,9 @@ def check_document_health(path_like: str | Path) -> Tuple[HealthStatus, str]:
     """Check the health of any supported document type.
 
     Returns (status, message):
-        "ok"         — file opened cleanly.
+        "ok"         — file opened cleanly (or no structural check is available).
         "damaged"    — structural damage detected; some content may be recoverable.
-        "unreadable" — file cannot be opened or format is not recognised.
+        "unreadable" — file cannot be opened.
     """
     path = Path(path_like)
     if not path.exists():
