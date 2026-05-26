@@ -69,8 +69,23 @@ def check_pdf_health(path: Path) -> Tuple[HealthStatus, str]:
     try:
         from pypdf import PdfReader
     except ImportError:
-        return "unreadable", "pypdf is not installed — run: pip install pypdf"
+        # Fall back to pikepdf/QPDF if pypdf isn't available.
+        try:
+            import pikepdf  # type: ignore
 
+            with pikepdf.open(str(path), suppress_warnings=True) as pdf:
+                n = len(pdf.pages)
+            return "ok", (
+                f"Opened PDF via pikepdf/QPDF ({n} page(s)); "
+                "pypdf is not installed so strict validation was not performed."
+            )
+        except ImportError:
+            return (
+                "unreadable",
+                "Neither pypdf nor pikepdf is installed — run: pip install pypdf pikepdf",
+            )
+        except Exception as e:
+            return "unreadable", f"PDF could not be opened via pikepdf/QPDF: {e}"
     strict_err: Exception | None = None
 
     # 1. Try strict mode (clean, no errors expected).
@@ -222,6 +237,8 @@ def check_document_health(path_like: str | Path) -> Tuple[HealthStatus, str]:
     path = Path(path_like)
     if not path.exists():
         return "unreadable", f"File not found: {path}"
+    if not path.is_file():
+        return "unreadable", f"Not a file: {path}"
     if path.stat().st_size == 0:
         return "damaged", "File is empty (0 bytes)."
     ext = path.suffix.lower()
