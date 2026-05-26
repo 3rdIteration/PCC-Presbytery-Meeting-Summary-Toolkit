@@ -19,7 +19,7 @@ Every month:
 4. The agent will:
    - Make any scanned PDFs in the meeting folder searchable (so Ctrl+F works later).
    - Read every document and figure out the actual meeting date (docket → committee report dates → folder name → ask you if ambiguous).
-   - Generate `index.html` **inside the meeting folder** — a self-contained browser-viewable summary with motions, key issues, supporting document links, financial snapshots, and a hash list.
+   - Generate `index.html` **inside the meeting folder** — a self-contained browser-viewable summary with motions, key issues, supporting document links, financial snapshots, a hash list, and a clickable docket at the top that jumps to matching sections.
    - For Word/Excel links in the summary, provide both **View** and **Download** actions (with the title link defaulting to **View**, using an in-browser Office web viewer and no file conversion).
    - **Ask whether you want to upload to the web.** If you only want a local file, say no.
 5. If you said yes to uploading, the script confirms the target one more time ("Proceed with upload?") before sending anything. The public URL is printed when done.
