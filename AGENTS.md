@@ -140,6 +140,15 @@ Brackets in patterns are placeholders (`<Date>` = something like `October 28, 20
 - `Ministry Committee Report` was renamed to `Mission Plan Committee Report` — both refer to the same committee.
 - IM reports may name the congregation with or without a comma (`St. Paul's Bramalea` vs. `St. Paul's, Bramalea`).
 
+### Draft vs. final (and versioned) duplicates
+
+When the folder contains what appears to be more than one version of the same document — a draft alongside a final, or lower-numbered and higher-numbered revisions — apply the following rule:
+
+- **If the newer/final version is clearly identifiable** (e.g. one file has "Draft" in the name and the other does not, or one carries a higher version number such as `v2`/`Rev 2`, or one has a later date in the filename), **include only the newer/final version** and ignore the draft. Do not list the draft in the Supporting Documents table or hash list.
+- **If it is ambiguous which version supersedes the other** (e.g. both are labelled "Draft", neither carries a version number, or the naming gives no clear signal), make an educated guess as to which is newer (prefer higher version numbers, later dates, and absence of "Draft" in that order) — but **include both** in the summary and note in a ⚠ callout that multiple versions were found and the newer one could not be determined with certainty.
+
+Common signals that a file is a draft: the word `Draft` or `DRAFT` anywhere in the filename; a `(Draft)` suffix; a version indicator lower than another copy (`v1` vs. `v2`; `Rev 1` vs. `Rev 2`). Common signals that a file is final or newer: no draft marker; a higher version/revision number; a later date in the filename; an explicit `Final` or `Signed` marker.
+
 ---
 
 ## Partial Document Set Handling
@@ -288,7 +297,7 @@ Use the following structure:
 ```
 1. Header (Title, Date, Location, Moderator, Clerk, Worship, Stated Hour info)
 2. Top navigation link near the top: **"← Back to meeting documents index"** linking to `../` (relative path only; no hardcoded domain)
-3. Docket Section (items listed in order, with Docket.pdf linked at item 2)
+3. Docket Section (items listed in order, with Docket.pdf linked at item 2; each docket heading links to its section below as a quick index)
 4. Reports Section
    a. Business Committee Report (with RECEIVE and REFER tables, recommendations)
    b. Pastoral Guidance Report (note if no document circulated)
@@ -306,6 +315,9 @@ Use the following structure:
 ### Step 3: Docket Section
 
 - List each docket item as an `<h3>` heading (numbered).
+- Make every docket heading clickable: wrap the heading text in an anchor that links to the corresponding section lower in the page (e.g. docket "Reports" links to the Reports section heading).
+- Ensure destination sections have stable `id` attributes so these docket links work reliably.
+- Keep existing section anchors/links that already exist; this requirement adds docket-section navigation only.
 - **Link the Docket PDF inline at item 2** (where the docket is formally adopted), not above the docket list.
 - For the Stated Hour docket item, include the **scheduled time** displayed prominently.
 
@@ -609,6 +621,7 @@ If the upload step fails for permission, network, or credential reasons, surface
 11. **Scanned PDFs are OCR'd** (or alongside) after health checking so all later parsing is text-based.
 12. Include a visible top-of-page **Back** link that points to `../` (relative parent directory).
 13. Word/Excel document references must provide both **View** and **Download** links, with document-title links defaulting to **View**.
+14. All docket section headings at the top must be clickable links that jump to the matching section in the same `index.html`.
 
 ---
 
