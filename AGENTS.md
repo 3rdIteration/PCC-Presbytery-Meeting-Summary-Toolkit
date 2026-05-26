@@ -52,9 +52,10 @@ For each of these:
 
 The `tools/` subfolder of this toolkit contains:
 
+- `tools/check_documents.py` — detect and repair damaged documents before any content extraction. Checks PDFs (via pypdf strict mode), DOCX/XLSX/XLSM (ZIP integrity), and DOC/XLS (OLE2 header). Repairs PDFs by re-reading in QPDF recovery mode (via pikepdf) or pypdf lax mode. Run `python <toolkit>/tools/check_documents.py <file> --repair` to check and repair a single file. Exit codes: 0 = healthy, 1 = damaged but repaired, 2 = damaged/unrepaired, 3 = unreadable.
 - `tools/make_searchable_pdf.py` — embed an invisible searchable text layer onto a scanned PDF after you have OCR'd it via vision. Run `python <toolkit>/tools/make_searchable_pdf.py --help` for full usage. Input and output paths are passed explicitly, so this script does not care where it is invoked from.
 - `tools/upload_to_ftp.py` — upload the generated `index.html` **and every local document it references** to an FTP(S) server inside a date-named folder, so links resolve on the live page. Reads `<toolkit>/tools/ftp_config.json` (template at `<toolkit>/tools/ftp_config.example.json`). Pass `--folder <meeting>` so it knows where `index.html` lives and can infer the date. After sending `index.html` the script parses it for `<a href="...">` references to local files in the same folder and uploads each one (skipping external URLs, subdirectories, the credential file, and — with a confirmation — toolkit files). Pass `--only-html` to upload just the HTML and skip the referenced documents. Prefers TLS; warns on unverified certs and cleartext.
-- `tools/requirements.txt` — Python dependencies (`pypdf`, `reportlab`). Install with `pip install -r <toolkit>/tools/requirements.txt` if missing. The upload script uses only the Python stdlib (no extra installs).
+- `tools/requirements.txt` — Python dependencies (`pypdf`, `reportlab`, `pikepdf`). Install with `pip install -r <toolkit>/tools/requirements.txt` if missing. `pikepdf` is needed for PDF repair; if it is absent, `check_documents.py` will fall back to pypdf's recovery mode for less-severe damage. The upload script uses only the Python stdlib (no extra installs).
 
 ## Output Format
 
@@ -178,9 +179,33 @@ In all partial-set cases, render the **Supporting Documents** table at the botto
 
 ### Step 0: Preprocess Scans and Images (Extract Text Sidecars)
 
-Before parsing content, ensure every visual document in the meeting folder is text-accessible so humans can use Ctrl+F and future automated runs can extract text cleanly.
+Before parsing content, check every document for damage and attempt repairs, then make visual documents text-accessible so humans can use Ctrl+F and future automated runs can extract text cleanly.
 
-#### 0a. Scanned PDFs → embedded invisible text layer
+#### 0a. Document health check and repair
+
+Run `python <toolkit>/tools/check_documents.py <file>` on **every file** in the meeting folder before any content extraction. Build a **damage status map** (filename → `ok` / `damaged_repaired` / `damaged_unrepaired` / `unreadable`) and carry it through all subsequent steps.
+
+For each file:
+
+1. **Status `ok`** — proceed normally.
+2. **Status `damaged`** (PDF):
+   a. Attempt repair: `python <toolkit>/tools/check_documents.py "<file>" --repair --output "<stem> - repaired.pdf"`
+   b. If exit code `1` (repaired): use the repaired copy for all subsequent steps (OCR, text extraction, content parsing, HTML links). Keep the original on disk but do not read from it further. Record both filenames in the damage status map under `damaged_repaired`.
+   c. If exit code `2` (repair failed): record as `damaged_unrepaired`.
+3. **Status `damaged`** (DOCX / XLSX / XLSM / DOC / XLS): automatic repair is not supported for Office formats. Record as `damaged_unrepaired`.
+4. **Status `unreadable`**: do not attempt content extraction. Treat as absent for content purposes (apply Partial Document Set Handling rules for that document type).
+
+**How to surface damage in the generated HTML:**
+
+- **Repaired document** (`damaged_repaired`): render a `⚠ REPAIRED` callout (amber box — see Step 10) at the section where the document is used. State the original filename and note that it was automatically repaired from a damaged state; some content may be missing or incomplete.
+- **Damaged but unrepaired** (`damaged_unrepaired`): render a `⚠ DAMAGED` callout (red box) at the section where the document would normally appear. State that the file exists but could not be repaired; describe what information may therefore be missing from the summary.
+- **Unreadable** (`unreadable`): render a `⚠ UNREADABLE` callout (red box) and treat the document as absent — apply the Partial Document Set Handling rules for a missing document of that type.
+- **Supporting Documents table**: add a **Status** column — `✓ OK`, `⚠ Repaired`, `⛔ Damaged`, or `⛔ Unreadable`. For repaired PDFs, link the repaired file as the primary link and note the original filename in parentheses.
+- **Document Hash List**: record the hash of the repaired file (not the original) and append "auto-repaired from damaged original" to the entry.
+
+**Damage status carries forward:** every downstream step that reads a document must consult the damage map. Repaired PDFs replace their originals in all references; unreadable/unrepaired files are treated as absent for content extraction but still listed (with status indicators) in the Supporting Documents table and hash list.
+
+#### 0b. Scanned PDFs → embedded invisible text layer
 
 1. For each `.pdf` in the meeting folder, attempt text extraction with `pypdf`. If a PDF returns essentially zero extractable text it is a scan and needs OCR.
 2. Read the scanned PDF with your vision capability, capturing the text page by page.
@@ -193,7 +218,7 @@ Before parsing content, ensure every visual document in the meeting folder is te
    - Without `--in-place` the new file is written as `<name> - searchable.pdf` next to the original in the meeting folder; prefer this when in doubt.
    - Clean up any scratch `pages.json` files after the run so they don't accumulate.
 
-#### 0b. Image files → text sidecar
+#### 0c. Image files → text sidecar
 
 Image files in meeting packages are usually photos of documents (forms, signed pages), announcement posters (concerts, events), or charts with text labels. They are not searchable by default.
 
@@ -206,9 +231,9 @@ Image files in meeting packages are usually photos of documents (forms, signed p
    d. Write the result to `<meeting>/<stem>_ocr.txt` (UTF-8). Naming: keep the original stem verbatim and append `_ocr.txt` — e.g. `TPC concert.png` → `TPC concert_ocr.txt`. Always produce a sidecar, even for images where the OCR yields very little — describe what is there.
 2. In the generated HTML, link **both** the original image and its `_ocr.txt` sidecar from the same row of the Supporting Documents table. If the image carries substantive meeting content (a poster announcing a Stated Hour item, a chart referenced in a report, a signature page substantiating a vote), also surface a brief summary inline at the section it relates to. Purely decorative or unrelated images can be listed only in Supporting Documents — but a sidecar is still produced for them.
 
-#### 0c. After preprocessing
+#### 0d. After preprocessing
 
-All subsequent extraction in the meeting folder can rely on (a) embedded text in PDFs and (b) `_ocr.txt` sidecars for images. Build the Expected Document Inventory check, the Supporting Documents table, and the hash list using these enriched sources.
+All subsequent extraction in the meeting folder can rely on (a) embedded text in PDFs and (b) `_ocr.txt` sidecars for images. Build the Expected Document Inventory check, the Supporting Documents table, and the hash list using these enriched sources. Where a repaired PDF replaced a damaged original, use the repaired file throughout — the damage status map records which files were substituted.
 
 ### Step 1: Read and Analyze All Documents
 
@@ -358,6 +383,7 @@ Use highlights sparingly and only for substantive items — don't manufacture po
 
 At the bottom of the document, include a complete reference table listing **every file** in the meeting folder and which docket item or report it is matched to. If any files cannot be matched to a specific docket item, note them as standalone supporting documents.
 - For Word/Excel rows in this table, include both **View** and **Download** links (with the title/file-name link defaulting to **View**).
+- Include a **Status** column for every row: `✓ OK`, `⚠ Repaired` (amber), `⛔ Damaged` (red), or `⛔ Unreadable` (red). For repaired PDFs, link the repaired copy as the primary file link and show the original filename in a note (e.g., "repaired from *original name.pdf*").
 
 ### Step 9: Next Meetings
 
@@ -370,6 +396,8 @@ Use the following CSS conventions:
 - Key issue warnings: light gray background with gray left border, prefix `⚠`
 - Highlight (worth celebrating) callouts: light teal background with teal left border, prefix `★`. Distinct from Stated Hour green to avoid visual ambiguity.
 - Stated Hour items: green background with green left border (reserved exclusively for docket-level Stated Hour topics — not for highlights)
+- **Repaired document notices**: light amber/orange background (`#fff3cd`) with amber left border (`#e6a817`), prefix `⚠ REPAIRED —`. Used when a document was automatically repaired from a damaged state; distinct from the gray key-issue box.
+- **Damaged/unreadable document warnings**: light red background (`#fde8e8`) with red left border (`#c0392b`), prefix `⚠ DAMAGED —` or `⚠ UNREADABLE —`. Used when a file could not be repaired or opened at all; more severe than the gray key-issue box.
 - Tables: dark header background, alternating row colors, hover highlight
 - Links: blue, no underline by default, underline on hover
 - Use a clean, professional sans-serif font stack
@@ -577,15 +605,17 @@ If the upload step fails for permission, network, or credential reasons, surface
 7. **Supporting Documents table** at the bottom lists all files and their docket/report matches.
 8. The output is a **single self-contained HTML file**; Word/Excel **View** links use client-side JS libraries (SheetJS / mammoth.js) loaded from CDN — no external viewer service, no file conversion, works with password-protected hosting.
 9. **AI-Generated Disclaimer** must appear prominently after the header information block, warning that the summary may contain mistakes, omissions, and incorrect characterizations, and does not replace the official documents.
-10. **Scanned PDFs are OCR'd in place** (or alongside) as the very first step so all later parsing is text-based.
-11. Include a visible top-of-page **Back** link that points to `../` (relative parent directory).
-12. Word/Excel document references must provide both **View** and **Download** links, with document-title links defaulting to **View**.
+10. **Document health check** (`check_documents.py`) must run **before** OCR or any content extraction (Step 0a). Damaged PDFs are repaired first; the repaired copy is used for all downstream steps. Surface damage/repair status with styled callouts (amber for repaired, red for damaged/unreadable) that are visually distinct from regular ⚠ key-issue boxes. Always include a Status column in the Supporting Documents table.
+11. **Scanned PDFs are OCR'd** (or alongside) after health checking so all later parsing is text-based.
+12. Include a visible top-of-page **Back** link that points to `../` (relative parent directory).
+13. Word/Excel document references must provide both **View** and **Download** links, with document-title links defaulting to **View**.
 
 ---
 
 ## File Naming Convention
 
 - Output: `index.html`, written into the **meeting folder** (the folder the user pointed you at — not the toolkit folder).
+- Repaired PDFs: `<original stem> - repaired.pdf` in the meeting folder, next to the damaged original. The original is left on disk untouched; the repaired copy is used for all further processing and linked from the HTML.
 - OCR'd searchable copies of scanned PDFs (if not in-place): `<original name> - searchable.pdf` in the meeting folder, next to the original scan.
 - Image text sidecars: `<image stem>_ocr.txt` in the meeting folder, next to the original image (e.g. `Poster.png` → `Poster_ocr.txt`). UTF-8.
 - Do not write any other files into the meeting folder. Scratch files (e.g. `pages.json` for OCR overlay) go in the toolkit folder or `%TEMP%` and must be cleaned up before the run ends.
