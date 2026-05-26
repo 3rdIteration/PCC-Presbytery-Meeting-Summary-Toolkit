@@ -263,7 +263,7 @@ Use the following structure:
 ```
 1. Header (Title, Date, Location, Moderator, Clerk, Worship, Stated Hour info)
 2. Top navigation link near the top: **"← Back to meeting documents index"** linking to `../` (relative path only; no hardcoded domain)
-3. Docket Section (items listed in order, with Docket.pdf linked at item 2)
+3. Docket Section (items listed in order, with Docket.pdf linked at item 2; each docket heading links to its section below as a quick index)
 4. Reports Section
    a. Business Committee Report (with RECEIVE and REFER tables, recommendations)
    b. Pastoral Guidance Report (note if no document circulated)
@@ -281,6 +281,9 @@ Use the following structure:
 ### Step 3: Docket Section
 
 - List each docket item as an `<h3>` heading (numbered).
+- Make every docket heading clickable: wrap the heading text in an anchor that links to the corresponding section lower in the page (e.g. docket "Reports" links to the Reports section heading).
+- Ensure destination sections have stable `id` attributes so these docket links work reliably.
+- Keep existing section anchors/links that already exist; this requirement adds docket-section navigation only.
 - **Link the Docket PDF inline at item 2** (where the docket is formally adopted), not above the docket list.
 - For the Stated Hour docket item, include the **scheduled time** displayed prominently.
 
@@ -580,6 +583,7 @@ If the upload step fails for permission, network, or credential reasons, surface
 10. **Scanned PDFs are OCR'd in place** (or alongside) as the very first step so all later parsing is text-based.
 11. Include a visible top-of-page **Back** link that points to `../` (relative parent directory).
 12. Word/Excel document references must provide both **View** and **Download** links, with document-title links defaulting to **View**.
+13. All docket section headings at the top must be clickable links that jump to the matching section in the same `index.html`.
 
 ---
 
