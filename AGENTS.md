@@ -139,6 +139,15 @@ Brackets in patterns are placeholders (`<Date>` = something like `October 28, 20
 - `Ministry Committee Report` was renamed to `Mission Plan Committee Report` — both refer to the same committee.
 - IM reports may name the congregation with or without a comma (`St. Paul's Bramalea` vs. `St. Paul's, Bramalea`).
 
+### Draft vs. final (and versioned) duplicates
+
+When the folder contains what appears to be more than one version of the same document — a draft alongside a final, or lower-numbered and higher-numbered revisions — apply the following rule:
+
+- **If the newer/final version is clearly identifiable** (e.g. one file has "Draft" in the name and the other does not, or one carries a higher version number such as `v2`/`Rev 2`, or one has a later date in the filename), **include only the newer/final version** and ignore the draft. Do not list the draft in the Supporting Documents table or hash list.
+- **If it is ambiguous which version supersedes the other** (e.g. both are labelled "Draft", neither carries a version number, or the naming gives no clear signal), make an educated guess as to which is newer (prefer higher version numbers, later dates, and absence of "Draft" in that order) — but **include both** in the summary and note in a ⚠ callout that multiple versions were found and the newer one could not be determined with certainty.
+
+Common signals that a file is a draft: the word `Draft` or `DRAFT` anywhere in the filename; a `(Draft)` suffix; a version indicator lower than another copy (`v1` vs. `v2`; `Rev 1` vs. `Rev 2`). Common signals that a file is final or newer: no draft marker; a higher version/revision number; a later date in the filename; an explicit `Final` or `Signed` marker.
+
 ---
 
 ## Partial Document Set Handling
