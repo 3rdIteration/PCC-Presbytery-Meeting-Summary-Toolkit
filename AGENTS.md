@@ -100,7 +100,7 @@ Brackets in patterns are placeholders (`<Date>` = something like `October 28, 20
 
 ### Core — always expected; flag inline as ⚠ if missing
 
-- **Docket** — `<Date> - Docket.pdf`. The numbered agenda for the meeting; the authoritative source for meeting date, location, moderator, clerk, worship leaders, and any Stated Hour topic and time.
+- **Docket** — `<Date> - Docket.pdf`. The numbered agenda for the meeting; the authoritative source for meeting date, moderator, clerk, worship leaders, and any Stated Hour topic and time. **Not** the meeting venue — the postal address under the "Presbytery of Brampton" letterhead is the Clerk's mailing address (see the venue resolution order in Step 1).
 - **Business Committee Report** — `<Date> - Business Committee Report.pdf`. Contains the RECEIVE/NOTE/FILE table, the REFER table, recommendations and motions for vote, and a Treasurer's summary.
 - **Summary Minutes (prior meeting)** — `<Date> - Summary Minutes.pdf`. The approved minutes of the previous regular meeting. Absent from emergent/call meetings is normal — do not flag.
 - **Interim Moderator (IM) Reports** — `IM Report - <Congregation> - <Month>.pdf`. One per active congregation under interim ministry oversight; typically 8–12 per meeting. Flag if fewer than 5 are present.
@@ -254,7 +254,16 @@ All subsequent extraction in the meeting folder can rely on (a) embedded text in
 6. Identify the **General Presbyter's Report** — it covers activities, appointments, and initiatives.
 7. Identify **Interim Moderator (IM) / Presbytery Representative reports** — one per congregation.
 8. Identify any **grant applications**, **financial statements**, or other supporting documents.
-9. Note the meeting date, location, moderator, clerk, worship leaders, and any Stated Hour topic/time from the docket.
+9. Note the meeting date, moderator, clerk, worship leaders, and any Stated Hour topic/time from the docket. Resolve the **meeting location (venue)** separately — see the venue resolution order below; do **not** assume the venue is the postal address printed under the "Presbytery of Brampton" letterhead at the top of the docket.
+
+> **Meeting location (venue) — resolution order:** the address that appears directly beneath the "Presbytery of Brampton" heading at the top of the docket is the **Clerk's letterhead / mailing address**, not where the meeting is held. It changes rarely and must never be used as the venue. Resolve the actual venue by walking this list in order and stopping at the first confident answer:
+>
+> 1. **A user-stated venue.** If the user has told you where this meeting is, use it.
+> 2. **The previous meeting's docket.** The docket from the *immediately preceding* meeting normally announces the upcoming meeting's date, time, and location (e.g. "The Presbytery of Brampton will meet at <church name and address>"). This prior docket is usually already published online (the live meeting-docs site, one date-folder up) and may also be in the folder or retrievable over FTP — check there.
+> 3. **The summary minutes.** The running header of each page of the prior Summary Minutes names the meeting venue; the minutes' opening may state it ("met in person at …"). This gives the *previous* meeting's venue — use it as the upcoming venue only if nothing newer says otherwise, and say so.
+> 4. **Ask the user.** If none of the above yields a confident venue, ask before generating. Never silently fall back to the letterhead address.
+>
+> Render the venue and its resolution path in §1 (Header). If you could only find a prior-meeting venue (not an explicit announcement for *this* meeting), note that inline so a reader can verify.
 
 > **Meeting date — resolution order:** the folder name is **not** authoritative; folders are often named after when the materials were assembled, not the meeting itself. Resolve the meeting date by walking this list in order and stopping at the first confident answer:
 >
@@ -399,7 +408,7 @@ At the bottom of the document, include a complete reference table listing **ever
 
 ### Step 9: Next Meetings
 
-Extract next meeting dates, times, and locations from the docket or Business Committee Report. Include the documentation deadline date.
+Extract next meeting dates, times, and locations from the docket or Business Committee Report — these announcements ("The Presbytery of Brampton will meet at …") are the authoritative venue source for the *upcoming* meeting and should be used as that meeting's venue when its summary is later generated. Include the documentation deadline date.
 
 ### Step 10: Styling Requirements
 
